@@ -10,6 +10,222 @@
 
 ## 🚀 주요 기능 (Features)
 
+<details>
+  <summary>🔍 음악관리 (열기/닫기)</summary>
+
+  ```csharp
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class SoundMgr : G_Singleton<SoundMgr>
+{
+    [HideInInspector] public AudioSource m_AudioSrc = null;
+    Dictionary<string, AudioClip> m_AdClipList = new Dictionary<string, AudioClip>();
+
+    float m_bgmVolume = 0.2f;
+    [HideInInspector] public bool m_SoundOnOff = true;
+    [HideInInspector] public float m_SoundVolume = 1.0f;
+
+    //--- 효과음 최적화를 위한 버퍼 변수
+    int m_EffSdCount = 5;       //지금은 5개의 레이어로 플레이...
+    int m_SoundCount = 0;       //최대 5개까지 재생되게 제어(렉방지 위해...)
+    GameObject[] m_SndObjList = new GameObject[10];
+    AudioSource[] m_SndSrcList = new AudioSource[10];
+    float[] m_EffVolume = new float[10];
+    //--- 효과음 최적화를 위한 버퍼 변수
+
+    protected override void Init()  //Awake() 함수 대신 사용
+    {
+        base.Init(); //부모쪽에 있는 Init() 함수 호출
+
+        LoadChildGameObj();
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        //--- 사운드 리소스 미리 로딩
+        AudioClip a_GAudioClip = null;
+        object[] temp = Resources.LoadAll("Sounds");
+        for (int i = 0; i < temp.Length; i++)
+        {
+            a_GAudioClip = temp[i] as AudioClip;
+
+            if (m_AdClipList.ContainsKey(a_GAudioClip.name) == true)
+                continue;
+
+            m_AdClipList.Add(a_GAudioClip.name, a_GAudioClip);
+        }
+        //--- 사운드 리소스 미리 로딩
+    }
+
+    // Update is called once per frame
+
+    void LoadChildGameObj()
+    {
+        m_AudioSrc = gameObject.AddComponent<AudioSource>();
+
+        //--- 게임 효과음 플레이를 위한 5개의 레이어 생성 코드
+        for (int i = 0; i < m_EffSdCount; i++)
+        {
+            GameObject newSndObj = new GameObject();
+            newSndObj.transform.SetParent(transform);
+            newSndObj.transform.localPosition = Vector3.zero;
+            AudioSource a_AudioSrc = newSndObj.AddComponent<AudioSource>();
+            a_AudioSrc.playOnAwake = false;
+            a_AudioSrc.loop = false;
+            newSndObj.name = "SoundEffObj";
+
+            m_SndSrcList[i] = a_AudioSrc;
+            m_SndObjList[i] = newSndObj;
+        }
+        //--- 게임 효과음 플레이를 위한 5개의 레이어 생성 코드
+
+        //--- 게임 시작되면 사운드 OnOff, 사운드 볼륨 로컬 로딩 후 적용
+        int a_SoundOnOff = PlayerPrefs.GetInt("SoundOnOff", 1);
+        if (a_SoundOnOff == 1)
+            SoundOnOff(true);
+        else
+            SoundOnOff(false);
+
+        float a_Value = PlayerPrefs.GetFloat("SoundVolume", 1.0f);
+        SoundVolume(a_Value);
+        //--- 게임 시작되면 사운드 OnOff, 사운드 볼륨 로컬 로딩 후 적용
+
+    }//void LoadChildGameObj()
+
+    public void PlayBGM(string a_FileName, float fVolume = 0.2f)
+    {
+        AudioClip a_GAudioClip = null;
+        if (m_AdClipList.ContainsKey(a_FileName) == true)
+        {
+            a_GAudioClip = m_AdClipList[a_FileName];
+        }
+        else
+        {
+            a_GAudioClip = Resources.Load("Sounds/" + a_FileName) as AudioClip;
+            m_AdClipList.Add(a_FileName, a_GAudioClip);
+        }
+
+        if (m_AudioSrc == null)
+            return;
+
+        if (m_AudioSrc.clip != null && m_AudioSrc.clip.name == a_FileName)
+            return;
+
+        m_AudioSrc.clip = a_GAudioClip;
+        m_AudioSrc.volume = fVolume * m_SoundVolume;
+        m_bgmVolume = fVolume;
+        m_AudioSrc.loop = true;
+        m_AudioSrc.Play();
+
+    }// public void PlayBGM(string a_FileName, float fVolume = 0.2f)
+
+    public void PlayGUISound(string a_FileName, float fVolume = 0.2f)
+    {  //GUI 효과음 플레이 하기 우한 함수
+
+        if (m_SoundOnOff == false)
+            return;
+
+        AudioClip a_GAudioClip = null;
+
+        if (m_AdClipList.ContainsKey(a_FileName) == true)
+        {
+            a_GAudioClip = m_AdClipList[a_FileName];
+        }
+        else
+        {
+            a_GAudioClip = Resources.Load("Sounds/" + a_FileName) as AudioClip;
+            m_AdClipList.Add(a_FileName, a_GAudioClip);
+        }
+
+        if (m_AudioSrc == null)
+            return;
+
+        m_AudioSrc.PlayOneShot(a_GAudioClip, fVolume * m_SoundVolume);
+
+    }
+
+    public void PlayEffSound(string a_FileName, float fVolume = 0.2f)
+    {
+        if (m_SoundOnOff == false)
+            return;
+
+        AudioClip a_GAudioClip = null;
+        if (m_AdClipList.ContainsKey(a_FileName) == true)
+        {
+            a_GAudioClip = m_AdClipList[a_FileName];
+        }
+        else
+        {
+            a_GAudioClip = Resources.Load("Sounds/" + a_FileName) as AudioClip;
+            m_AdClipList.Add(a_FileName, a_GAudioClip);
+        }
+
+        if (a_GAudioClip == null)
+            return;
+
+        if (m_SndSrcList[m_SoundCount] != null)
+        {
+            m_SndSrcList[m_SoundCount].volume = 1.0f;
+            m_SndSrcList[m_SoundCount].PlayOneShot(a_GAudioClip, fVolume * m_SoundVolume);
+            m_EffVolume[m_SoundCount] = fVolume;
+
+            m_SoundCount++;
+            if (m_EffSdCount <= m_SoundCount)
+                m_SoundCount = 0;
+        }//if (m_SndSrcList[m_SoundCount] != null)
+
+    }//public void PlayEffSound(string a_FileName, float fVolume = 0.2f)
+
+    public void SoundOnOff(bool a_OnOff = true)
+    {
+        bool a_MuteOnOff = !a_OnOff;
+
+        if (m_AudioSrc != null)
+        {
+            m_AudioSrc.mute = a_MuteOnOff;  //mute == true 끄기 mute == false 켜기
+            //if(a_MuteOnOff == false)
+            //  m_AudioSrc.time = 0;        //처음부터 다시 플레이
+        }
+
+        for (int i = 0; i < m_EffSdCount; i++)
+        {
+            if (m_SndSrcList[i] != null)
+            {
+                m_SndSrcList[i].mute = a_MuteOnOff;
+
+                if (a_MuteOnOff == false)
+                    m_SndSrcList[i].time = 0;   //처음부터 다시 플레이
+            }
+        }//for(int i = 0; i < m_EffSdCount; i++)
+
+        m_SoundOnOff = a_OnOff;
+
+    }//public void SoundOnOff(bool a_OnOff = true)
+
+    public void SoundVolume(float fVolume)
+    {
+        if (m_AudioSrc != null)
+            m_AudioSrc.volume = m_bgmVolume * fVolume;
+
+        m_SoundVolume = fVolume;
+
+        // ✅ 효과음 볼륨도 실시간으로 갱신
+        for (int i = 0; i < m_EffSdCount; i++)
+        {
+            if (m_SndSrcList[i] != null)
+            {
+                m_SndSrcList[i].volume = fVolume;  // 또는 m_EffVolume[i] * fVolume;
+            }
+        }
+    }
+}
+
+  ```
+</details>
+
 
 <details>
   <summary>🔍 방 생성 및 삭제 시스템 (열기/닫기)</summary>
@@ -687,7 +903,6 @@ bandicam2025-06-0121-21-03-774-ezgif.com-video-to-gif-converter.gif
 ㅉ
 <details>
   <summary>🔍 게임 다시하기 (열기/닫기)</summary>
-</details>
 
 ```csharp
 void start()
@@ -835,6 +1050,8 @@ void start()
       PhotonNetwork.LoadLevel("Round_1");
   }
   ```
+</details>
+
 <details>
   <summary>🔍 채팅 기능 코드 (열기/닫기)</summary>
 
@@ -1277,5 +1494,371 @@ void RotateToCameraForward()
 </details>
 
 <details>
-  <summary>1라운드 트랩 코드 (열기/닫기)</summary>
+  <summary>튜토리얼 (열기/닫기)</summary>
+
+```csharp
+
+    public class TutorialManager : MonoBehaviourPun
+{
+ //주요기능 요약
+ //2인 튜토리얼 협동 진행 (완료 동기화)
+ //실시간 텍스트 안내 및 화살표 UI 제공
+ //박스 던지기 실패 시 자동 복구
+ //MasterClient가 플레이어 번호 지정 및 동기화
+
+    public static TutorialManager Instance;
+
+    public Transform switchTransform; //스위치 위치 화살표로 알려주기 위해 변수선언
+    public Transform BoxTransform;
+    public GameObject Uiarrow;
+    public GameObject RightUiarrow;
+    public GameObject LeftUiarrow;
+
+    private int player1ActorNum;
+    private int player2ActorNum;
+    private bool player1Done = false;
+    private bool player2Done = false;
+
+
+    private bool switchStepCompleted = false;
+
+
+    public Text ShowText; // 게임설명 보여주는 텍스트임
+
+    public TutorialStepType currentStep = TutorialStepType.Opening; // 기본 타입은오프닝
+
+
+
+    private void Awake()
+    {
+        Instance = this; // 글로벌 밸류로 만들어서 접근하기 쉽게 만듬
+
+    }
+    void Start()
+    {
+        if (PhotonNetwork.IsMasterClient) //마스터 클라이언트만 플레이어 ID를 매기고 공유함
+        {
+            var players = PhotonNetwork.PlayerList;
+            int p1 = players[0].ActorNumber;
+            int p2 = players.Length > 1 ? players[1].ActorNumber : -1;
+
+            photonView.RPC("SyncPlayerActorNums", RpcTarget.OthersBuffered, p1, p2);
+
+            player1ActorNum = p1;
+            player2ActorNum = p2;
+        }
+
+        StartCoroutine(ShowOpeningText());
+
+    }
+    [PunRPC]
+    void SyncPlayerActorNums(int p1, int p2)
+    {
+        player1ActorNum = p1;
+        player2ActorNum = p2;
+    }
+    [PunRPC]
+public void NotifyStepDone_Single(int actorNumber, int stepIndex)
+{
+    TutorialStepType reportedStep = (TutorialStepType)stepIndex;
+
+    if (reportedStep != currentStep)
+    {
+        Debug.Log($"무시됨: 받은 단계 {reportedStep}, 현재 단계 {currentStep}");
+        return; // ✅ 현재 단계와 다르면 무시
+    }
+
+    Debug.Log($"플레이어 {actorNumber}가 {reportedStep} 완료!");
+
+    AdvanceToNextStep();
+}
+
+    [PunRPC]
+    public void NotifyStepDone(int actorNumber, int stepindex)
+    {
+        TutorialStepType reportedStep = (TutorialStepType)stepindex;
+        if (reportedStep != currentStep)
+        {
+            // Debug.Log($"무시됨: {reportedStep}는 현재 단계 {currentStep}와 다름");
+            return;
+        }
+
+        // 중복 방지
+        if ((actorNumber == player1ActorNum && player1Done) ||
+            (actorNumber == player2ActorNum && player2Done))
+        {
+            // Debug.Log($"중복된 완료 보고: {actorNumber}");
+            return;
+        }
+
+        if (actorNumber == player1ActorNum)
+        {
+            player1Done = true;
+            // Debug.Log(" Player1 완료!");
+        }
+        else if (actorNumber == player2ActorNum)
+        {
+            player2Done = true;
+            // Debug.Log(" Player2 완료!");
+        }
+
+        if (player1Done && player2Done)
+        {
+            AdvanceToNextStep(); // ✅ 둘 다 완료되었을 때만 넘어감
+        }
+        else
+        {
+            string waitingName = !player1Done ? PhotonNetwork.CurrentRoom.GetPlayer(player1ActorNum).NickName :
+                                                 PhotonNetwork.CurrentRoom.GetPlayer(player2ActorNum).NickName;
+
+            switch (currentStep)
+            {
+                case TutorialStepType.Move:
+                    ShowMessage($"{waitingName}님, WASD 눌러서 움직여 보세요!");
+                    break;
+                case TutorialStepType.Jump:
+                    ShowMessage($"{waitingName}님, 스페이스바를 눌러서 점프해 보세요!");
+                    break;
+                case TutorialStepType.Run:
+                    ShowMessage($"{waitingName}님, Shift 키를 누르고 달려봐요!");
+                    break;
+                case TutorialStepType.Camera:
+                    ShowMessage($"{waitingName}님, 마우스 우클릭을 누른 채 시야를 움직여 보세요!");
+                    break;
+            }
+        }
+    }
+
+    IEnumerator ShowOpeningText()
+    {
+        ShowMessage("안녕! 이제 모험을 시작해볼까요? 😊");
+        yield return new WaitForSeconds(2f);
+
+// 처음에 텍스트를 띄움
+        ShowMessage("WASD 키로 움직여보세요!");
+        currentStep = TutorialStepType.Move;
+    }
+
+    public void AdvanceToNextStep()
+    {
+        player1Done = false;
+        player2Done = false;
+
+        currentStep++;
+
+        string msg = "";
+
+        switch (currentStep)
+        {
+            case TutorialStepType.Jump:
+                msg = "스페이스바를 눌러 점프해보세요!";
+                break;
+
+            case TutorialStepType.Run:
+                msg = "Shift 키를 누른 채 방향키를 눌러 달려보세요!";
+                break;
+
+            case TutorialStepType.Camera:
+                msg = "마우스 오른쪽 버튼을 누른 채 시야를 움직여보세요!";
+                break;
+
+            case TutorialStepType.Switch:
+                msg = "잘하셨어요!\n이제 화살표가 가리키는 스위치로 가서 몸으로 눌러보세요!";
+                break;
+
+            case TutorialStepType.Box:
+                msg = "길이 열렸어요!\n다른 플레이어가 다리를 건너 박스 앞에 가서 E 키를 눌러볼까요?";
+                break;
+
+            case TutorialStepType.BoxThrow:
+                msg = "마우스 왼쩍 버튼을 눌러 던져보세요!\n길게 누르면 더 강하게 던질 수 있고, 던지는 중에도 각도를 조절할 수 있어요.";
+                break;
+
+            case TutorialStepType.Clear:
+                msg = "아주 잘 하셨어요 ! 이제 이 박스를 스위치에 올리면 튜토리얼 끝~ \n 이제 계단을 올라가서 나머지 퍼즐을 올려볼까요!";
+                break;
+        }
+        // 🔥 Clear 단계일 때만 메시지를 3초 뒤에 지움
+        if (currentStep == TutorialStepType.Clear)
+        {
+            StartCoroutine(HideMessageAfterDelay(3f));
+        }
+        photonView.RPC("AdvanceStepRPC", RpcTarget.All, (int)currentStep, msg);
+
+    }
+    void ShowDirectionUI()
+    {
+        // 해당 목표지점(스위치)을 월드좌표에서 화면좌표로 바꾸어 ui이미지로 표시(플레이어들한테 방향을 알려주기 위해)
+        Vector3 viewportPos = Camera.main.WorldToViewportPoint(switchTransform.position);
+        Debug.Log($"ViewportPos: {viewportPos}");
+        if (viewportPos.z <= 0f)
+        {
+            // 카메라 뒤에 있을 때 → 왼쪽 화살표만
+            LeftUiarrow.gameObject.SetActive(true);
+            RightUiarrow.gameObject.SetActive(false);
+            return; // 아래 조건문 실행하지 않도록 리턴
+        }
+        if (viewportPos.x < 0.0f)
+        {
+            LeftUiarrow.gameObject.SetActive(true);
+            RightUiarrow.gameObject.SetActive(false);
+        }
+        else if (viewportPos.x > 1.0f)
+        {
+            RightUiarrow.gameObject.SetActive(true);
+            LeftUiarrow.gameObject.SetActive(false);
+        }
+        else
+        {
+            LeftUiarrow.gameObject.SetActive(false);
+            RightUiarrow.gameObject.SetActive(false);
+        }
+    }
+
+
+    IEnumerator HideMessageAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        photonView.RPC("HideTextRPC", RpcTarget.All); //  모든 클라이언트가 텍스트 보이게 실행
+    }
+    [PunRPC]
+    public void HideTextRPC()
+    {
+        ShowText.text = "";
+    }
+    [PunRPC]
+    public void AdvanceStepRPC(int stepIndex, string msg)
+    {
+        currentStep = (TutorialStepType)stepIndex;
+        ShowMessage(msg);
+    }
+    [PunRPC]
+    public void ShowMessage(string msg)
+    {
+        ShowText.text = msg;
+    }
+
+    public void ReportStepComplete(TutorialStepType step)
+    {
+        photonView.RPC("NotifyStepCompleteRPC", RpcTarget.MasterClient, PhotonNetwork.LocalPlayer.ActorNumber, (int)step);
+    }
+    //
+    bool IsTargetVisible(Camera cam, Transform target)
+    {
+        Vector3 viewportPos = cam.WorldToViewportPoint(target.position); //카메라가 뷰안에 있는지 체크하기 위한 변수  
+
+        return (viewportPos.z > 0 && viewportPos.x >= 0 && viewportPos.x <= 1 && viewportPos.y >= 0 && viewportPos.y <= 1); // 카메라 정면값을 리턴 
+    }
+    
+     void Update()
+    {
+        if (currentStep == TutorialStepType.Switch)
+        {
+            if (IsTargetVisible(Camera.main, switchTransform))
+            {
+                Uiarrow.SetActive(true);
+                LeftUiarrow.SetActive(false);
+                RightUiarrow.SetActive(false);
+            }
+            else
+            {
+                Uiarrow.SetActive(false);
+                ShowDirectionUI();
+            }
+        }
+    }
+    public Transform boxRespawnPoint; // 튜토리얼 박스 스폰 위치
+
+    [PunRPC]
+    public void HandleThrowFailed()
+    {
+        ShowMessage("박스가 빗나갔어요! 다시 던져주세요!");
+
+        StartCoroutine(RespawnBoxDelay(2f));
+    }
+
+    IEnumerator RespawnBoxDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        GameObject newBox = PhotonNetwork.Instantiate("TutorialsBox", boxRespawnPoint.position, Quaternion.identity);
+
+        newBox.GetComponent<PhotonView>().RPC("SetRespawnState", RpcTarget.AllBuffered, true);
+
+    }
+
+    // 플레이어 스크립트에서 튜토리얼 체크
+        void CheckMovementInput() // 움직임 체크
+    {
+        if (TutorialManager.Instance == null || TutorialManager.Instance.currentStep != TutorialStepType.Move) return;
+
+        if (Input.GetKeyDown(KeyCode.W)) movedW = true;
+        if (Input.GetKeyDown(KeyCode.A)) movedA = true;
+        if (Input.GetKeyDown(KeyCode.S)) movedS = true;
+        if (Input.GetKeyDown(KeyCode.D)) movedD = true;
+
+        if (movedW && movedA && movedS && movedD && !hasSentMoveComplete)
+        {
+            hasSentMoveComplete = true;
+            PhotonView tutorialPV = TutorialManager.Instance.photonView;
+            tutorialPV.RPC("NotifyStepDone", RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, (int)TutorialStepType.Move);
+        }
+    }
+      void CheckJumpInput()
+  {
+      if (TutorialManager.Instance == null || TutorialManager.Instance.currentStep != TutorialStepType.Jump) return;
+
+      if (Input.GetKeyDown(KeyCode.Space) && !hasSentJumpComplete)
+      {
+          hasSentJumpComplete = true;
+          PhotonView tutorialPV = TutorialManager.Instance.photonView;
+          tutorialPV.RPC("NotifyStepDone", RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, (int)TutorialStepType.Jump);
+      }
+  }
+  void CheckCameraMove()
+  {
+      if (hasSentMouseMoveComplete) return;
+
+      if (TutorialManager.Instance == null || TutorialManager.Instance.currentStep != TutorialStepType.Camera) return;
+
+      if (Input.GetMouseButton(1)) // 마우스 우클릭 중
+      {
+          float mouseX = Input.GetAxisRaw("Mouse X");
+          float mouseY = Input.GetAxisRaw("Mouse Y");
+
+          // 민감도 완화
+          if (Mathf.Abs(mouseX) + Mathf.Abs(mouseY) > 0.01f)
+          {
+              hasSentMouseMoveComplete = true;
+              Debug.Log("오른쪽 마우스 + 카메라 움직임 감지!");
+
+              PhotonView tutorialPV = TutorialManager.Instance.photonView;
+              tutorialPV.RPC("NotifyStepDone", RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, (int)TutorialStepType.Camera);
+          }
+      }
+  }
+  void CheckRun()
+  {
+      if (hasSentRunComplete) return;
+
+      bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+      bool isMoving = Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.D);
+
+      if (isShiftHeld && isMoving)
+      {
+          PhotonView tutorialPV = TutorialManager.Instance.photonView;
+          hasSentRunComplete = true;
+          Debug.Log("달리기 감지됨!");
+          tutorialPV.RPC("NotifyStepDone", RpcTarget.All, PhotonNetwork.LocalPlayer.ActorNumber, (int)TutorialStepType.Run);
+      }
+  }
+}
+
+```
+</details>
+
+<details>
+  <summary>튜토리얼 (열기/닫기)</summary>
+
+
 </details>
