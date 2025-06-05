@@ -2776,86 +2776,34 @@ public class TriggerController : MonoBehaviour
 </details>
 
 <details>
-  <summary>박스던져서 길만들기</summary>
+  <summary>레버당겨서 길만들기</summary>
 
 ```csharp
-// 위에 박스 설명이 있기 때문에 길만드는 부분만 설명하겠습니다.
-public class BoxCtrl : MonoBehaviourPunCallbacks, IPunObservable
-{
-    float floatDuration = 15f;  // 떠있는 시간
-    float sinkDuration = 5f;   // 가라앉은 후 삭제까지 시간
-    public float sinkSpeed = 0.2f;    // 가라앉는 속도
-    public float bobHeight = 0.2f;   // 위아래 진폭
-    public float bobSpeed = 0.2f;     // 위아래 속도
-    public float rotationSmooth = 2f; // 회전 보정 속도
+// 레버당겨서 통나무 오브젝트가 나오게 했습니다. 이건 레버 스크립트만 올리겠습니다.
+ void update()
+ {
+        if (PlayerCheck && Input.GetKeyDown(KeyCode.E) && !isCooldown)
+        {
+            isLeverOn = !isLeverOn;
 
+            // 레버 상태 GameMgr에 알림
+            GameMgr.inst.LaverCheck((int)m_LaverTrap + 1);
 
-    void OnTriggerEnter(Collider other)
+            // 플랫폼이 연결된 경우 RPC 실행
+            if (targetObject != null)
+            {
+                isCooldown = true; // 쿨타임 시작
+                photonView.RPC("StartMovingPlatform", RpcTarget.All);
+            }
+        }
+ }
+     [PunRPC]
+    void StartMovingPlatform()
     {
-
-        if (other.CompareTag("Water") && !isFloating)
-        {
-            Debug.Log("박스빠짐!");
-            // 1. 회전 정지
-            rb.angularVelocity = Vector3.zero;
-            boxCollider.isTrigger = false;
-            rb.isKinematic = true;
-            // 2. 회전 고정 (선택적)
-            rb.constraints |= RigidbodyConstraints.FreezeRotation;
-            StartCoroutine(FloatThenSink());
-        }
+        if (moveRoutine != null) StopCoroutine(moveRoutine);
+        moveRoutine = StartCoroutine(MoveObjectTemporarily());
     }
-    IEnumerator FloatThenSink()
-    {
-        isFloating = true;
-
-        // 1. 물리 멈춤 및 회전 제한
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        rb.constraints |= RigidbodyConstraints.FreezeRotation;
-
-        // 2. 위치 살짝 내리기
-        float floatYOffset = -0.5f;
-        Vector3 floatBasePos = transform.position + new Vector3(0, floatYOffset, 0);
-        transform.position = floatBasePos;
-
-        float timer = 0f;
-        Quaternion targetRotation = Quaternion.Euler(0f, transform.rotation.eulerAngles.y, 0f);
-
-        // 3. 떠 있는 동안 흔들리고 회전 보정
-        while (timer < floatDuration)
-        {
-            timer += Time.deltaTime;
-
-            float yOffset = Mathf.Sin(Time.time * bobSpeed) * bobHeight;
-            Vector3 newPos = new Vector3(
-                floatBasePos.x,
-                floatBasePos.y + yOffset,
-                floatBasePos.z
-            );
-            transform.position = newPos;
-
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * rotationSmooth);
-
-            yield return null;
-        }
-
-        // 4. 가라앉기 시작
-        float sinkTimer = 0f;
-        while (sinkTimer < sinkDuration)
-        {
-            sinkTimer += Time.deltaTime;
-
-            transform.position -= new Vector3(0, sinkSpeed * Time.deltaTime, 0);
-
-            yield return null;
-        }
-
-        // 5. 삭제
-        Destroy(gameObject);
-    }
-}
-
+    
 ```
 </details>
 
