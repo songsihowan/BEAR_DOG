@@ -31,7 +31,8 @@ Photon을 활용한 네트워크 게임 개발에 흥미를 느껴 프로젝트�
 - **2025.04.20 ~ 2025.06.04**
 
 ## 시연 영상
-
+https://www.youtube.com/watch?v=yQCyWAWR2RQ
+---
 
 ## 🚀 주요 기능
 
@@ -40,15 +41,6 @@ Photon을 활용한 네트워크 게임 개발에 흥미를 느껴 프로젝트�
   <summary>환경설정 관리</summary>
 
 ```csharp
-using Photon.Pun;
-using Photon.Voice.PUN;
-using Photon.Voice.Unity;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
-
 public enum VoiceChatMode
 {
     PushToTalk,  // P 키 누를 때만 발화
@@ -472,279 +464,174 @@ public class SoundMgr : G_Singleton<SoundMgr>
   <summary>🔍 방 생성 및 삭제 시스템 (열기/닫기)</summary>
 
 ```csharp
-// 접속순서는 번호로 적음
-    void Awake()
-    {
-        if(!PhotonNetwork.IsConnected) 
-        // Photon 서버 접속 확인 (인게임에서 빠져나온 경우 재접속 필요)
-        {
-            //1번, 포톤 클라우드에 접속 시도
-            PhotonNetwork.ConnectUsingSettings();
-            // Photon 서버 접속 시도 (지역 서버 접속 및 AppId 인증 포함)
-        }
-        //사용자 이름 설정
-        UserId.text = GetUserId();
+using DG.Tweening;
+using Photon.Pun;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
+using UnityEngine.UI;
 
-        //룸 이름을 무작위로 설정
-        roomName.text = "Room_" + Random.Range(0, 999).ToString("000");
-    }
 
-    // Start is called before the first frame update
+
+public enum inGame 
+{
+    Opning,
+    Lobby,
+    GameCreate,
+    RoomCreate
+}
+
+
+
+
+public class LobbyMgr : MonoBehaviour
+{
+    public static inGame m_inGame = inGame.Opning;
+
+    // 테스트용 플레이어 이름과 점수
+    public string testPlayerName = "TestUser";
+    public float testClearTime = 99.99f;
+
+    // 오프닝 변수들
+    public GameObject GameLobbyScnen;
+    public GameObject GameOpning;
+    public Animator OpningAnimator;
+    // 애니메이션 재생 여부를 추적하는 변수 추가
+
+    // 처음 게임선택 버튼들 시작, 설정, 나가기
+    public Button GameStartBtn;
+    public Button GameExitBtn;
+    public Button BackBtn;
+    public Text GametitleText;
+    public GameObject GameCreatePnael;
+    // 나머지 변수들...
+    [Header("--- ConfigBox ---")]
+    public Button GameSetingBtn;
+    public GameObject Canvas_Dialog = null;
+    GameObject m_ConfigBoxObj = null;
+
+    // 게임시작 판낼 움직이는 코드
+    private RectTransform panelRectTransform;
+    private Vector2 initialPos;
+    private Vector2 targetPos;
+    private float moveSpeed = 2f; // 이동 속도
+    private bool isMoving = false; // 이동 중인지 체크하는 변수
+
     void Start()
     {
-        PhotonNetwork.ConnectToRegion("kr"); // 한국 서버(Region) 직접 연결
 
-        if (UserIdBtn != null)
-            UserIdBtn.onClick.AddListener(OnClickNameRandomRoom);
+        GameStartBtn.onClick.AddListener(() => {
+            RectTransform btnRect = GameStartBtn.GetComponent<RectTransform>();
+            btnRect.DOPunchAnchorPos(new Vector2(10, 0), 0.3f, 10, 1);
+            GameCreateRoom();
+        });
+        // 시작시 모든버튼 정보 가지고와서 음악넣기
+        Button[] buttons = FindObjectsOfType<Button>(true); // 비활성화 포함
+        string roomName = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.Name : "test_room";
+        //StartCoroutine(SendClearTimeToServer(testPlayerName, testClearTime, roomName)); // php테스트
+        foreach (Button btn in buttons)
+        {
+            btn.onClick.AddListener(() =>
+            {
+                Debug.Log("버튼누름");
+                SoundMgr.Inst.PlayGUISound("Pop", 1.0f); // 클릭 시 효과음 재생
+            });
+        }
+        // 시작시 모든버튼 정보 가지고와서 음악넣기
+        GameExitBtn.onClick.AddListener(() =>
+        {
+            Application.Quit();
+        });
 
-        if (CreateRoomBtn != null)
-            CreateRoomBtn.onClick.AddListener(OnClickCreateRoom);
+        if (GameSetingBtn != null)
+            GameSetingBtn.onClick.AddListener(() =>
+            {
+
+                if (m_ConfigBoxObj == null)
+                    m_ConfigBoxObj = Resources.Load("ConfigBox") as GameObject;
+
+                GameObject a_CfgBoxObj = Instantiate(m_ConfigBoxObj);
+                a_CfgBoxObj.transform.SetParent(Canvas_Dialog.transform, false);
+                a_CfgBoxObj.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+
+                a_CfgBoxObj.transform
+                    .DOScale(1.1f, 0.25f)
+                    .SetEase(Ease.OutBack)
+                    .OnComplete(() => {
+                        a_CfgBoxObj.transform.DOScale(1f, 0.1f);
+                    });
+            });
+        if (BackBtn != null)
+            BackBtn.onClick.AddListener(() => {
+                RectTransform btnRect = BackBtn.GetComponent<RectTransform>();
+                btnRect.DOPunchAnchorPos(new Vector2(3, 0), 0.3f, 10, 1);
+                LobbyRoom();
+            });
+        else
+        {
+            Debug.LogError("BackBtn is not assigned!");
+        }
+        // RectTransform 가져오기
+        panelRectTransform = GameCreatePnael.GetComponent<RectTransform>();
+
+        // 초기 위치
+        initialPos = panelRectTransform.anchoredPosition;
+        targetPos = new Vector2(1380f, initialPos.y); // 타겟 위치 (예: 오른쪽으로 이동
     }
 
-    // Update is called once per frame
     void Update()
     {
-        if (0.0f < ShowMsTimer)
+        if (m_inGame != inGame.Lobby && OpningAnimator != null)
         {
-            ShowMsTimer -= Time.deltaTime;
-            if (ShowMsTimer <= 0.0f)
+            AnimatorStateInfo stateInfo = OpningAnimator.GetCurrentAnimatorStateInfo(0);
+            if (stateInfo.normalizedTime >= 0.99f && !OpningAnimator.IsInTransition(0))
             {
-                MessageOnOff("", false); //메시지 숨김
-            }
-        }//if(0.0f < ShowMsTimer)     
-    }
+                Debug.Log("애니종료 입력하셨습니다.");
 
-    //2번, ConnectUsingSetting() 함수 호출에 대한 서버 접속이 성공하면 호출되는 콜백 함수
-    public override void OnConnectedToMaster()
-    {
-        Debug.Log("포톤 서버 접속 완료");
-        // Master 서버 접속 완료 (PhotonNetwork.ConnectToMaster 상태) 
-
-        //3번, 규모가 작은 게임에서는 서버 로비가 보통 하나이고...
-        //대형 게임인 경우 상급자로비, 중급자로비, 초보자로비처럼
-        // 여러 로비(상급자, 중급자, 초보자 등) 존재 가능
-        PhotonNetwork.JoinLobby();  //포톤에서 제공해 주는 가상의 로비에 접속 시도
-    }
-
-    //4번, PhotonNetwork.JoinLobby() 성공시 호출되는 로비 접속 콜백함수
-    public override void OnJoinedLobby()
-    {
-        if (isWaitingToCreateRoom)
-        {
-            CreateRoom();
-            isWaitingToCreateRoom = false;
-        }
-    }
-    public void CreateRoom()
-    {
-        string _roomName = roomName.text;
-        //룸 이름이 없거나 null 일 경우 룸 이름 저장
-        if (string.IsNullOrEmpty(roomName.text))
-        {
-            _roomName = "Room_" + Random.Range(0, 999);
-        }
-
-        PhotonNetwork.LocalPlayer.NickName = UserId.text;
-        //생성할 룸의 조건 설정
-        RoomOptions roomOptions = new RoomOptions();
-        roomOptions.IsOpen = true;      //입장 가능 여부
-        roomOptions.IsVisible = true;   //로비에서 룸의 노출 여부
-        roomOptions.MaxPlayers = 2;     //룸에 입장할 수 있는 최대 접속자 수
-
-        //지정한 조건에 맞는 룸 생성 함수
-        PhotonNetwork.CreateRoom(_roomName, roomOptions, TypedLobby.Default);
-    }
-
-    public override void OnJoinedRoom()
-    {  
-        //서버 역할인 경우 5번 : 방입장, 클라이언트 역할인 경우 4번 : 방입장
-
-        Debug.Log("방 참가 완료");
-
-        //룸 씬으로 이동하는 코루틴 실행
-        StartCoroutine(this.LoadBattleField());
-    }
-
-    //룸 씬으로 이동하는 코루틴 함수
-    IEnumerator LoadBattleField()
-    {
-        //씬을 이동하는 동안 포톤 클라이드 서버로부터 네트워크 메시지 수신 중단
-        PhotonNetwork.IsMessageQueueRunning = false;
-        //백그라운드로 씬 로딩
-        AsyncOperation ao = SceneManager.LoadSceneAsync("SelectcharacterScene");
-
-        yield return ao;
-    }
-
-    //PhotonNetwork.JoinRandomRoom(); 함수가 실패한 경우 호출되는 오버라이드 함수
-    public override void OnJoinRandomFailed(short returnCode, string message)
-    {
-        Debug.Log("랜덤 방 참가 실패 (참가할 방이 존재하지 않습니다.)");
-
-        //방을 생성하면서 들어감
-        //생성할 룸의 조건부터 설정
-        RoomOptions roomOptions = new RoomOptions();  //using Photon.RealTime;
-        roomOptions.IsVisible = true;   //로비에서 룸의 노출 여부
-        roomOptions.BroadcastPropsChangeToAll = true;
-        roomOptions.MaxPlayers = 2;     //룸에 입장할 수 있는 최대 접속자 수
-
-        //지정한 조건에 맞는 룸생성 함수
-        PhotonNetwork.CreateRoom("MyRoom", roomOptions);
-    }
-
-    ////방 생성 실패시 호출되는 함수(대부분 룸의 이름이 이미 존재하는 경우)
-    //public override void OnCreateRoomFailed(short returnCode, string message)
-    //{
-    //    Debug.Log(returnCode + " : " + message);
-    //}
-
-    //로컬에 저장된 플레이어 이름을 반환하거나 생성하는 함수
-    string GetUserId()
-    {
-        string userId = PlayerPrefs.GetString("USER_ID");
-
-        if(string.IsNullOrEmpty(userId))
-        {
-            userId = "USER_" + Random.Range(0, 999).ToString("000");
-        }
-
-        return userId;
-    }
-
-    //Join Random Room 버튼 클릭 시 호출되는 함수
-    public void OnClickNameRandomRoom()
-    {
-        //로컬 플레이어의 이름을 설정
-        PhotonNetwork.LocalPlayer.NickName = UserId.text;
-        MessageOnOff(UserId.text+"로 닉네임을 설정했습니다.");
-
-
-        //플레이어 이름을 저장
-        PlayerPrefs.SetString("USER_ID", UserId.text);
-
-    }
-
-    //Make Room 버튼 클릭 시 호출될 함수
-    public void OnClickCreateRoom()
-    {
-        if (!PhotonNetwork.InLobby)
-        {
-            Debug.Log("로비에 아직 안 들어감. 대기 중...");
-            isWaitingToCreateRoom = true;
-            return;
-        }
-        CreateRoom();
-
-    }
-
-    //PhotonNetwork.CreateRoom() 함수 호출이 실패 하면 호출되는 함수
-    //(같은 이름의 방이 이미 있을 때 실패함)
-    public override void OnCreateRoomFailed(short returnCode, string message)
-    {
-        Debug.Log("방 만들기 실패");
-        MessageOnOff("방만들기에 실패했습니다 다시 입력하세요");
-        //주로 같은 이름의 방이 존재할 때 룸 생성 에러가 발생된다.
-        Debug.Log(returnCode.ToString());  //오류코드(ErrorCode 클래스)
-        Debug.Log(message);  //오류 메시지
-    }
-
-    public void OnClickRoomItem(string roomName)
-    {
-        PhotonNetwork.LocalPlayer.NickName = UserId.text;
-
-        //인자로 전달된 이름에 해당하는 룸으로 입장
-        PhotonNetwork.JoinRoom(roomName);
-    }
-
-    public override void OnRoomListUpdate(List<RoomInfo> roomList)
-    {
-        /*
-        새 방 생성 or 기존 방 정보 갱신:
-        - 방이 새로 만들어지면 RoomItem 프리팹 인스턴스 생성
-        - 기존 방이라면 RoomItem 정보 갱신
-        */
-
-        m_RoomItemList = scrollContents.transform.GetComponentsInChildren<RoomItem>(true);
-
-        int roomCount = roomList.Count;
-        int ArrIdx = 0;
-        for(int i = 0; i < roomCount; i++)
-        {
-            ArrIdx = MyFindIndex(m_RoomItemList, roomList[i]);
-
-            if (roomList[i].RemovedFromList == false)
-            { 
-                if(ArrIdx < 0)
-                { //방을 새로 생성하는 경우
-                    GameObject room = Instantiate(roomItem) as GameObject;  
-                    //생성한 RoomItem에 프리팹의 Parent를 지정
-                    room.transform.SetParent(scrollContents.transform, false);
-                    //생성한 RoomItem에 표시하기 위한 텍스트 정보 전달
-                    RoomItem roomData = room.GetComponent<RoomItem>();
-                    roomData.roomName = roomList[i].Name;
-                    roomData.connectPlayer = roomList[i].PlayerCount;
-                    roomData.maxPlayer = roomList[i].MaxPlayers;
-
-                    //텍스트 정보를 표시
-                    roomData.DispRoomData(roomList[i].IsOpen);
-                }
-                else  //해당 방이 리스트 뷰에 존재하면 방정보만 갱신해 줘야 한다는 의미
-                {  
-                    //기존 방 정보만 갱신
-                    m_RoomItemList[ArrIdx].roomName = roomList[i].Name;
-                    m_RoomItemList[ArrIdx].connectPlayer = roomList[i].PlayerCount;
-                    m_RoomItemList[ArrIdx].maxPlayer = roomList[i].MaxPlayers;
-
-                    //텍스트 정보를 표시
-                    m_RoomItemList[ArrIdx].DispRoomData(roomList[i].IsOpen);
-                }
-            }
-            else 
-            { //방이 파괴되어서 리스트뷰에서 RoomItem을 제거
-                if(0 <= ArrIdx)
+                if (Input.GetKeyDown(KeyCode.E) && m_inGame == inGame.Opning)
                 {
-                    MyDestroy(m_RoomItemList, roomList[i]);
-                    //이 방 정보를 갖고 있는 리스트뷰 목록을 모두 제거
+                    GameOpning.SetActive(false);
+                    GameLobbyScnen.SetActive(true);
+                    m_inGame = inGame.Lobby; // 상태 변경
+                    GametitleText.text = ""; // 시작은 빈 텍스트
+                    GametitleText.DOText("<color=red>Dog</color> And <color=blue>Bear</color>", 2f).SetEase(Ease.Linear);
+                    SoundMgr.Inst.PlayGUISound("Pop", 0.5f); // 클릭 시 효과음 재생
+
                 }
             }
         }
-    }
-
-    int MyFindIndex(RoomItem[] RmItemList, RoomInfo roomInfo)
-    {
-        if(RmItemList == null)
-            return -1;
-
-        if(RmItemList.Length <= 0)
-            return -1;
-
-        for(int i = 0; i < RmItemList.Length; i++)
+        else if (m_inGame == inGame.Lobby)
         {
-            if(RmItemList[i].roomName == roomInfo.Name)
-            {
-                return i;
-            }
+            GameOpning.SetActive(false);
+            GameLobbyScnen.SetActive(true);
         }
 
-        return -1;
     }
-
-    void MyDestroy(RoomItem[] RmItemList, RoomInfo roomInfo)
+    void GameCreateRoom()
     {
-        if (RmItemList == null)
-            return;
-
-        if(RmItemList.Length <= 0)
-            return;
-
-        for(int i = 0; i < RmItemList.Length; i++)
-        {
-            if (RmItemList[i].roomName == roomInfo.Name)
-            {
-                Destroy(RmItemList[i].gameObject);
-            }
-        }
+        GameCreatePnael.SetActive(true);
+        panelRectTransform.DOAnchorPos(targetPos, 0.5f)
+            .SetEase(Ease.OutCubic)
+            .OnComplete(() => isMoving = false);
+        isMoving = true;
     }
+
+    void LobbyRoom()
+    {
+        if (isMoving) return;
+
+        isMoving = true;
+        panelRectTransform.DOAnchorPos(initialPos, 0.5f)
+            .SetEase(Ease.InCubic)
+            .OnComplete(() =>
+            {
+                GameCreatePnael.SetActive(false);
+                m_inGame = inGame.Lobby;
+                isMoving = false;
+            })
+    }
+}
 ```
 </details>
 
@@ -1275,20 +1162,20 @@ void start()
               PunVoiceClient.Instance.Disconnect();  // 연결 끊기
           }
 
-          // 🔥 이거 안 하면 문제가 계속 남음
+          //  이거 안 하면 문제가 계속 남음
           Destroy(PunVoiceClient.Instance.gameObject);  // 오브젝트 자체 파괴
       }
 
-      //  3. 네트워크 오브젝트 모두 제거
+      //   네트워크 오브젝트 모두 제거
       PhotonNetwork.DestroyAll();
 
-      //  4. 딜레이 (정리 시간 확보)
+      //  딜레이 (정리 시간 확보)
       yield return new WaitForSeconds(0.5f);
 
-      //  5. 메시지 큐 재시작
+      //   메시지 큐 재시작
       PhotonNetwork.IsMessageQueueRunning = true;
 
-      //  6. 씬 로딩
+      //   씬 로딩
       PhotonNetwork.LoadLevel("Round_1");
   }
   ```
@@ -2780,8 +2667,9 @@ public class TriggerController : MonoBehaviour
 
 ```csharp
 // 레버당겨서 통나무 오브젝트가 나오게 했습니다. 이건 레버 스크립트만 올리겠습니다.
- void update()
- {
+        // 2라운드 레버 당김
+    void update()
+    {
         if (PlayerCheck && Input.GetKeyDown(KeyCode.E) && !isCooldown)
         {
             isLeverOn = !isLeverOn;
@@ -2796,12 +2684,70 @@ public class TriggerController : MonoBehaviour
                 photonView.RPC("StartMovingPlatform", RpcTarget.All);
             }
         }
- }
-     [PunRPC]
+
+        RotateLever();
+    }
+    [PunRPC]
     void StartMovingPlatform()
     {
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveObjectTemporarily());
+    }
+
+    IEnumerator MoveObjectTemporarily()
+    {
+        Vector3 upPos = originalPosition + upPositionOffset;
+
+        // 올라감
+        float t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f;
+            targetObject.position = Vector3.Lerp(originalPosition, upPos, t); // 기존 설정된 오브젝트 포지션 올라가게 하여 길만들기
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(autoResetTime);
+
+        // 내려감
+        t = 0;
+        while (t < 1f)
+        {
+            t += Time.deltaTime * 2f;
+            targetObject.position = Vector3.Lerp(upPos, originalPosition, t);
+            yield return null;
+        }
+
+        isLeverOn = false;
+        isCooldown = false; // 쿨타임 해제 
+    }
+    void RotateLever() // 레버 애니메이션
+    {
+        float targetRotation = isLeverOn ? LaverOnRotation : LaverOffRotation; // 목표 각도 설정
+
+        // 현재 회전 값을 가져오기
+        Quaternion currentRotation = lever_Lod.transform.localRotation;
+        Quaternion targetQuaternion;
+
+        if (m_LaverTrap == LaverTrap.Laver1)
+        {
+            targetQuaternion = Quaternion.Euler(targetRotation, 0, 0); // X축 회전
+        }
+        else
+        {
+            targetQuaternion = Quaternion.Euler(0, targetRotation, 0); // Y축 회전
+        }
+
+        // 현재 각도와 목표 각도 비교
+        if (Quaternion.Angle(currentRotation, targetQuaternion) < 0.1f)
+        {
+            // 목표에 도달하면 회전 멈춤
+            lever_Lod.transform.localRotation = targetQuaternion;
+            return;
+        }
+
+        // 부드럽게 회전
+        lever_Lod.transform.localRotation = Quaternion.Slerp(currentRotation, targetQuaternion, Time.deltaTime * rotationSpeed);
     }
     
 ```
@@ -2873,17 +2819,6 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
   <summary> PHP파일로 기록 저장 및 10위 순위로 출력 (열기/닫기)</summary>
 
   ```csharp
-// 마잇홈에서 기록을 저장하고 PHP파일은 파일질라로 올렸습니다.
-
-    [System.Serializable] // Unity가 저장하거나 변환(예: JSON) 할 수 있게 허용한다는 뜻입니다.
-    public class RankingEntry
-    {
-        public string player_name; // 플리에이 어름
-        public string room_id; // 저는 방기준으로 저장할거라서 등록함
-        public float score; // 시간
-    }
-
-// 골인지점 들어오면 RPC로 함수 전달
     double finalClearTime = 0.0f; // 클리어 시간 저장용
     string submittedPlayerNames = ""; // 🔸 전역 변수 추가
 
@@ -2892,17 +2827,14 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
     {
         Camera mainCam = Camera.main;
         if (mainCam != null)
-            mainCam.gameObject.SetActive(false); // 메인 카메라 비활성화
+            mainCam.gameObject.SetActive(false); // 메인 카메라 비활성화 클리어 연출을 하기 위해
 
         isGameFinished = true;
-        GameUi.SetActive(false); 
-        finalClearTime = PhotonNetwork.Time - gameStartTime;
-
-        Debug.Log($"🎉 클리어 시간: {finalClearTime:F2}초");
+        GameUi.SetActive(false);
+        finalClearTime = PhotonNetwork.Time - gameStartTime; //클리어 타임 저장
 
         if (PhotonNetwork.IsMasterClient)
         {
-            Debug.Log($"📦 현재 playerObjects.Count = {playerObjects.Count}");
 
             List<string> playerNames = new List<string>();
 
@@ -2919,24 +2851,43 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
                 }
             }
 
-            submittedPlayerNames = string.Join(",", playerNames); 
-            // 저장할때 PLYER1,PLAYER2 로 저장하기 위해
+            submittedPlayerNames = string.Join(",", playerNames);
 
-            //  모든 클라이언트에 제출된 이름 전송
+            // 모든 클라이언트에 제출된 이름 전송
             photonView.RPC("SetSubmittedPlayers", RpcTarget.Others, submittedPlayerNames);
 
             StartCoroutine(SendClearTimeToServer(submittedPlayerNames, finalClearTime, PhotonNetwork.CurrentRoom.Name));
+            StartCoroutine(GetRanking(PhotonNetwork.CurrentRoom.Name)); // 🟡 마스터만 즉시 실행
+        }
+        else
+        {
+            // 일반 클라이언트는 submittedPlayerNames 수신 후 랭킹 요청
+            StartCoroutine(WaitAndRequestRanking());
         }
 
-        StartCoroutine(GetRanking(PhotonNetwork.CurrentRoom.Name));
-
         timelineObject.SetActive(true);
+    }
+    IEnumerator WaitAndRequestRanking()
+    {
+        float timeout = 2f;
+        float t = 0f;
+        while (string.IsNullOrEmpty(submittedPlayerNames) && t < timeout)
+        {
+            t += Time.deltaTime;
+            yield return null;
+        }
+
+        yield return GetRanking(PhotonNetwork.CurrentRoom.Name);
     }
     [PunRPC]
     public void SetSubmittedPlayers(string names)
     {
         submittedPlayerNames = names;
+
+        // 이 타이밍에서 랭킹 요청 실행!
+        StartCoroutine(GetRanking(PhotonNetwork.CurrentRoom.Name));
     }
+
     [PunRPC]
     public void RegisterPlayerObject(int actorNumber, int viewID)
     {
@@ -2944,6 +2895,7 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
         if (!playerObjects.ContainsKey(actorNumber))
         {
             playerObjects.Add(actorNumber, obj);
+            Debug.Log($"플레이어 등록됨: {actorNumber} - {obj.name}");
         }
     }
     IEnumerator SendClearTimeToServer(string playerName, double time, string roomName)
@@ -2951,8 +2903,8 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
         WWWForm form = new WWWForm();
         form.AddField("player_name", playerName); // PHP에서 기대하는 키
         form.AddField("score", time.ToString("F2"));
-        form.AddField("room_id", roomName);       //  방 이름 전달
-        using (UnityWebRequest www = UnityWebRequest.Post("http://--------/UserInfo.php", form))// 도용방지
+        form.AddField("room_id", roomName);       // 방 이름 전달
+        using (UnityWebRequest www = UnityWebRequest.Post("http://---------/UserInfo.php", form))
         {
             yield return www.SendWebRequest();
             if (www.result == UnityWebRequest.Result.Success)
@@ -2961,7 +2913,7 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
             }
             else
             {
-                Debug.LogError("서버 저장 실패: " + www.error);
+                Debug.LogError("❌ 서버 저장 실패: " + www.error);
             }
         }
     }
@@ -2970,7 +2922,7 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
         WWWForm form = new WWWForm();
         form.AddField("room_id", roomId);
 
-        using (UnityWebRequest www = UnityWebRequest.Post("http://----------/GetRanking.php", form)) // 도용방지
+        using (UnityWebRequest www = UnityWebRequest.Post("http://------r/GetRanking.php", form)) // 도용방지
         {
             yield return www.SendWebRequest();
 
@@ -2978,6 +2930,9 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
             {
                 string json = www.downloadHandler.text;
                 RankingEntry[] rankings = JsonHelper.FromJson<RankingEntry>(json);
+
+                string myName = PhotonNetwork.LocalPlayer.NickName.Trim();
+                float myScore = (float)(PhotonNetwork.Time - gameStartTime); // 또는 이미 저장된 finalClearTime
 
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("Ranking\n");
@@ -2987,15 +2942,15 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
                     var entry = rankings[i];
                     string scoreTime = FormatTime(entry.score);
 
-                    bool isSubmittedPlayer = !string.IsNullOrEmpty(submittedPlayerNames) &&
-                                             submittedPlayerNames.Contains(entry.player_name);
+                    string cleanedEntryName = entry.player_name.Trim().Replace("\n", "").Replace("\r", "").Replace("\t", "");
+                    string cleanedMyName = myName.Trim().Replace("\n", "").Replace("\r", "").Replace("\t", "");
+                    bool isMyRecord = i < 10 && cleanedEntryName.Split(',').Any(name => name.Trim() == cleanedMyName);
+    
 
-                    if (isSubmittedPlayer)
-                        sb.AppendLine($"<color=yellow>{i + 1}위 {scoreTime} {entry.player_name}</color>\n");
-                        // 기록안에 자신이 있으면 노랑으로 표시
+                    if (isMyRecord)
+                        sb.AppendLine($"<color=#FFFF00>{i + 1}위 {scoreTime} {entry.player_name}</color>\n");
                     else
                         sb.AppendLine($"{i + 1}위 {scoreTime} {entry.player_name}\n");
-                        // 없으면 그냥 출력
                 }
 
                 rankingText.text = sb.ToString();
@@ -3003,10 +2958,25 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
             else
             {
                 rankingText.text = "랭킹 불러오기 실패!";
-                Debug.LogError("❌ 랭킹 실패: " + www.error);
             }
         }
+    }   
+    string FormatTime(float seconds)
+    {
+        int min = Mathf.FloorToInt(seconds / 60);      // 분 단위
+        int sec = Mathf.FloorToInt(seconds % 60);      // 초 단위
+        return $"{min:D2}:{sec:D2}";                   // 2자리 숫자 포맷 (예: 01:09)
     }
+
+
+    [System.Serializable] // Unity가 저장하거나 변환(예: JSON) 할 수 있게 허용한다는 뜻입니다.
+    public class RankingEntry
+    {
+        public string player_name;
+        public string room_id;
+        public float score;
+    }
+ 
 
   ```
 </details>
