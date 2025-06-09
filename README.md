@@ -1705,6 +1705,7 @@ public class TutorialUIController : MonoBehaviour
 
 <details>
   <summary>튜토리얼 gif(열기/닫기)</summary>
+  <img src="Tutorial.gif" width="500"/>
 </details>
 
 ### ⚙️ 인게임 공통 시스템
@@ -2369,11 +2370,6 @@ void RotateToCameraForward()
 </details>
 
 <details>
-  <summary>박스 던지기 및 트랩1 GIF</summary>
-</details>
-
-
-<details>
   <summary>트랩2(박스를 던져 표적을 맞추면 길이 생김 표적은 점점 작아짐)</summary>
 
   ```csharp
@@ -2587,7 +2583,9 @@ void RotateToCameraForward()
 </details>
 
 <details>
-  <summary>트랩2 gif</summary>
+  <summary>박스 던지기 및 트랩 GIF</summary>
+  <img src="Box_throw_and_target_climb.gif" width="500"/>
+</details>
 
 </details>
 
@@ -2660,6 +2658,7 @@ public class TriggerController : MonoBehaviour
 
 <details>
   <summary>원통 트랩 gif</summary>
+  <img src="cylindrical movement.gif" width="500"/>
 </details>
 
 <details>
@@ -2756,6 +2755,7 @@ public class TriggerController : MonoBehaviour
 
 <details>
   <summary>길만들기 gif</summary>
+    <img src="MakingaPath.gif" width="500"/>
 </details>
 
 <details>
@@ -2808,12 +2808,6 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
 }
  ```
 </details>
-
-
-<details>
-  <summary>정보 격차 기반 협동 gif</summary>
-</details>
-
 
 <details>
   <summary> PHP파일로 기록 저장 및 10위 순위로 출력 (열기/닫기)</summary>
