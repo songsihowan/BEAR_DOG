@@ -2944,7 +2944,69 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
         public string room_id;
         public float score;
     }
- 
+ // PHP파일
+<?php
+header('Content-Type: application/json');
+
+// DB 연결
+$conn = new mysqli("localhost", "cntkd13579", "as2020as!!", "cntkd13579");
+if ($conn->connect_error) {
+    echo json_encode([]);
+    exit;
+}
+
+// 단순 팀 단위 랭킹 (1줄 = 1팀)
+$sql = "
+    SELECT player_name, room_id, score
+    FROM GameRank
+    ORDER BY score ASC
+    LIMIT 10"; // 상위 10팀만
+
+$result = $conn->query($sql);
+
+$rankings = array();
+while ($row = $result->fetch_assoc()) {
+    $rankings[] = $row;
+}
+
+echo json_encode($rankings);
+
+$conn->close();
+?>
+<?php
+$playerName = $_POST["player_name"] ?? null;
+$score = $_POST["score"] ?? null;
+$roomId = $_POST["room_id"] ?? null;
+
+if (empty($playerName) || empty($score) || empty($roomId)) {
+    die("입력값 누락됨");
+}
+
+$con = mysqli_connect("localhost", "cntkd13579", "as2020as!!", "cntkd13579");
+
+if (!$con) {
+    die("DB 연결 실패: " . mysqli_connect_error());
+}
+
+// score는 double이기 때문에 숫자로 강제 변환
+$score = floatval($score);
+
+// created_at은 NOW()로 처리
+$query = "INSERT INTO GameRank (player_name, score, room_id, created_at) VALUES ('$playerName', '$score', '$roomId', NOW())";
+
+$result = mysqli_query($con, $query);
+
+if ($result) {
+    echo "InsertSuccess";
+} else {
+    echo "InsertFail: " . mysqli_error($con);
+}
+
+mysqli_close($con);
+?>
+
+
+
 
   ```
 </details>
