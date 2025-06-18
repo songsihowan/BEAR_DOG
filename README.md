@@ -2920,7 +2920,6 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
                 RankingEntry[] rankings = JsonHelper.FromJson<RankingEntry>(json);
 
                 string myName = PhotonNetwork.LocalPlayer.NickName.Trim();
-                float myScore = (float)(PhotonNetwork.Time - gameStartTime); // 또는 이미 저장된 finalClearTime
 
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("Ranking\n");
