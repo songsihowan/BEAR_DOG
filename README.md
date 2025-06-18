@@ -2847,26 +2847,10 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
             StartCoroutine(SendClearTimeToServer(submittedPlayerNames, finalClearTime, PhotonNetwork.CurrentRoom.Name));
             StartCoroutine(GetRanking(PhotonNetwork.CurrentRoom.Name)); // 🟡 마스터만 즉시 실행
         }
-        else
-        {
-            // 일반 클라이언트는 submittedPlayerNames 수신 후 랭킹 요청
-            StartCoroutine(WaitAndRequestRanking());
-        }
 
         timelineObject.SetActive(true);
     }
-    IEnumerator WaitAndRequestRanking()
-    {
-        float timeout = 2f;
-        float t = 0f;
-        while (string.IsNullOrEmpty(submittedPlayerNames) && t < timeout)
-        {
-            t += Time.deltaTime;
-            yield return null;
-        }
 
-        yield return GetRanking(PhotonNetwork.CurrentRoom.Name);
-    }
     [PunRPC]
     public void SetSubmittedPlayers(string names)
     {
