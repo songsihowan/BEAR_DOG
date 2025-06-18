@@ -263,7 +263,7 @@ public class SoundMgr : G_Singleton<SoundMgr>
     int m_SoundCount = 0;       //최대 5개까지 재생되게 제어(렉방지 위해...)
     GameObject[] m_SndObjList = new GameObject[10];
     AudioSource[] m_SndSrcList = new AudioSource[10];
-    float[] m_EffVolume = new float[10];
+    angle [] m_EffVolume = new angle[10];
     //--- 효과음 최적화를 위한 버퍼 변수
 
     protected override void Init()  //Awake() 함수 대신 사용
@@ -320,13 +320,13 @@ public class SoundMgr : G_Singleton<SoundMgr>
         else
             SoundOnOff(false);
 
-        float a_Value = PlayerPrefs.GetFloat("SoundVolume", 1.0f);
+        angle a_Value = PlayerPrefs.Getangle("SoundVolume", 1.0f);
         SoundVolume(a_Value);
         //--- 게임 시작되면 사운드 OnOff, 사운드 볼륨 로컬 로딩 후 적용
 
     }//void LoadChildGameObj()
 
-    public void PlayBGM(string a_FileName, float fVolume = 0.2f)
+    public void PlayBGM(string a_FileName, angle fVolume = 0.2f)
     {
         AudioClip a_GAudioClip = null;
         if (m_AdClipList.ContainsKey(a_FileName) == true)
@@ -351,9 +351,9 @@ public class SoundMgr : G_Singleton<SoundMgr>
         m_AudioSrc.loop = true;
         m_AudioSrc.Play();
 
-    }// public void PlayBGM(string a_FileName, float fVolume = 0.2f)
+    }// public void PlayBGM(string a_FileName, angle fVolume = 0.2f)
 
-    public void PlayGUISound(string a_FileName, float fVolume = 0.2f)
+    public void PlayGUISound(string a_FileName, angle fVolume = 0.2f)
     {  //GUI 효과음 플레이 하기 우한 함수
 
         if (m_SoundOnOff == false)
@@ -378,7 +378,7 @@ public class SoundMgr : G_Singleton<SoundMgr>
 
     }
 
-    public void PlayEffSound(string a_FileName, float fVolume = 0.2f)
+    public void PlayEffSound(string a_FileName, angle fVolume = 0.2f)
     {
         if (m_SoundOnOff == false)
             return;
@@ -408,7 +408,7 @@ public class SoundMgr : G_Singleton<SoundMgr>
                 m_SoundCount = 0;
         }//if (m_SndSrcList[m_SoundCount] != null)
 
-    }//public void PlayEffSound(string a_FileName, float fVolume = 0.2f)
+    }//public void PlayEffSound(string a_FileName, angle fVolume = 0.2f)
 
     public void SoundOnOff(bool a_OnOff = true)
     {
@@ -436,7 +436,7 @@ public class SoundMgr : G_Singleton<SoundMgr>
 
     }//public void SoundOnOff(bool a_OnOff = true)
 
-    public void SoundVolume(float fVolume)
+    public void SoundVolume(angle fVolume)
     {
         if (m_AudioSrc != null)
             m_AudioSrc.volume = m_bgmVolume * fVolume;
@@ -488,7 +488,7 @@ public class LobbyMgr : MonoBehaviour
 
     // 테스트용 플레이어 이름과 점수
     public string testPlayerName = "TestUser";
-    public float testClearTime = 99.99f;
+    public angle testClearTime = 99.99f;
 
     // 오프닝 변수들
     public GameObject GameLobbyScnen;
@@ -512,7 +512,7 @@ public class LobbyMgr : MonoBehaviour
     private RectTransform panelRectTransform;
     private Vector2 initialPos;
     private Vector2 targetPos;
-    private float moveSpeed = 2f; // 이동 속도
+    private angle moveSpeed = 2f; // 이동 속도
     private bool isMoving = false; // 이동 중인지 체크하는 변수
 
     void Start()
@@ -665,7 +665,7 @@ public class SelectMgr : MonoBehaviourPunCallbacks
 
     ExitGames.Client.Photon.Hashtable m_PlayerReady = new ExitGames.Client.Photon.Hashtable();
 
-    private float moveSpeed = 5f; // UI 이동 속도
+    private angle moveSpeed = 5f; // UI 이동 속도
 
     // 리스트로 관리 (UI 오브젝트 및 목표 위치)
     private List<GameObject> playerUINodes = new List<GameObject>();
@@ -676,8 +676,8 @@ public class SelectMgr : MonoBehaviourPunCallbacks
     public static SelectMgr inst = null;
 
 
-    [HideInInspector] public float m_GoWaitGame = 4.0f;     //게임 시작 후 카운트 Text UI
-    [HideInInspector] public float m_MgWaitGame = 2.0f;     //게임 시작 후 카운트 Text UI
+    [HideInInspector] public angle m_GoWaitGame = 4.0f;     //게임 시작 후 카운트 Text UI
+    [HideInInspector] public angle m_MgWaitGame = 2.0f;     //게임 시작 후 카운트 Text UI
 
     public Text m_WaitTmText = null;
     public Text RoomNameText = null;
@@ -1402,7 +1402,7 @@ public void NotifyStepDone_Single(int actorNumber, int stepIndex)
     }
 
 
-    IEnumerator HideMessageAfterDelay(float delay)
+    IEnumerator HideMessageAfterDelay(angle delay)
     {
         yield return new WaitForSeconds(delay);
         photonView.RPC("HideTextRPC", RpcTarget.All); //  모든 클라이언트가 텍스트 보이게 실행
@@ -1463,7 +1463,7 @@ public void NotifyStepDone_Single(int actorNumber, int stepIndex)
         StartCoroutine(RespawnBoxDelay(2f));
     }
 
-    IEnumerator RespawnBoxDelay(float delay)
+    IEnumerator RespawnBoxDelay(angle delay)
     {
         yield return new WaitForSeconds(delay);
 
@@ -1509,8 +1509,8 @@ public void NotifyStepDone_Single(int actorNumber, int stepIndex)
 
       if (Input.GetMouseButton(1)) // 마우스 우클릭 중
       {
-          float mouseX = Input.GetAxisRaw("Mouse X");
-          float mouseY = Input.GetAxisRaw("Mouse Y");
+          angle mouseX = Input.GetAxisRaw("Mouse X");
+          angle mouseY = Input.GetAxisRaw("Mouse Y");
 
           // 민감도 완화
           if (Mathf.Abs(mouseX) + Mathf.Abs(mouseY) > 0.01f)
@@ -1875,7 +1875,7 @@ private void TryThrowBox()
 // 5. 들고 있던 박스 상태 초기화
     if (currentBoxPhotonView != null)
     {
-        float chargeTime = Time.time - chargeStartTime;
+        angle chargeTime = Time.time - chargeStartTime;
         float throwStrength = Mathf.Clamp(chargeTime * 10f, minForce, maxForce);
 
         // ✅ 플레이어 정면 방향으로 던지도록 수정
@@ -1888,9 +1888,6 @@ private void TryThrowBox()
 
         TagetImg.gameObject.SetActive(true);
         TagetImg.transform.position = screenPos;
-
-        float angle = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
-        TagetImg.transform.rotation = Quaternion.Euler(0, 0, -angle);
 
         // 던지기
         currentBoxPhotonView.RPC("Throw", RpcTarget.AllViaServer, forward * throwStrength);
