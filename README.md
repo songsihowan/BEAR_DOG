@@ -50,9 +50,6 @@ public enum VoiceChatMode
 
 public class ConfigBox : MonoBehaviour
 {
-    public delegate void CFG_Response();    //<--- 델리게이트 데이터(옵션)형 하나 선언
-    public CFG_Response DltMethod = null;   //<--- 델리게이트 변수 선언(소켓 역할)
-
     public Button m_Ok_Btn = null;
     public Button m_Close_Btn = null;
 
