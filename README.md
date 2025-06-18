@@ -2841,11 +2841,8 @@ public class PathBlock : MonoBehaviour //투명블록 처음에 투명매쉬를 
 
             submittedPlayerNames = string.Join(",", playerNames);
 
-            // 모든 클라이언트에 제출된 이름 전송
-            photonView.RPC("SetSubmittedPlayers", RpcTarget.Others, submittedPlayerNames);
-
             StartCoroutine(SendClearTimeToServer(submittedPlayerNames, finalClearTime, PhotonNetwork.CurrentRoom.Name));
-            StartCoroutine(GetRanking(PhotonNetwork.CurrentRoom.Name)); // 🟡 마스터만 즉시 실행
+            photonView.RPC("SetSubmittedPlayers", RpcTarget.All, submittedPlayerNames);
         }
 
         timelineObject.SetActive(true);
