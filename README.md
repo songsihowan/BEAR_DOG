@@ -1,4 +1,4 @@
-# 🕹️ BEAR AND DOG
+9⁹# 🕹️ BEAR AND DOG
 
 곰과 강아지 캐릭터가 보물을 되찾기 위해 다양한 지형을 탈출하는 협동 퍼즐 게임
 
@@ -474,9 +474,7 @@ using UnityEngine.UI;
 public enum inGame 
 {
     Opning,
-    Lobby,
-    GameCreate,
-    RoomCreate
+    Lobby
 }
 
 
